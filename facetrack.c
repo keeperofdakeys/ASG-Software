@@ -35,7 +35,7 @@ struct timeval now_time;
 camshift cs;
 CvRect * faceRect;
 CvCapture * capture;
-CvBox2D * faceBox;
+double face_centre;
 
 int main( int argc, char** argv )
 {
@@ -63,11 +63,12 @@ int main( int argc, char** argv )
 
 int camShifter() {
   CvBox2D fb;
-  faceBox = &fb;
+  CvBox2D * faceBox = &fb;
   nextFrame();
 
-
   if(!track(&cs, frameCopy, faceBox)) return 0;
+  
+  face_centre = faceBox->center.x;
 
   cvEllipseBox(frameCopy, *faceBox,
       CV_RGB(255,0,0), 3, CV_AA, 0 );
@@ -91,23 +92,22 @@ void camShifterLoop(int comm_dev) {
     if( (char)43==key ) loops += 10;
     if( (char)45==key ) loops -= 10;
 
-    int face_centre = faceBox->center.x;
-    int window_centre = 300;
-    int diff = face_centre - window_centre;
-    int allowance = 100;
+    int window_centre = 320;
+    double diff = face_centre - window_centre;
+    double allowance = 30.0;
     if( time_move < curr_time ){
       if( diff > allowance ){
-        write(comm_dev,">",1);
-        time_move = curr_time + 100000;
-      }else if( diff < allowance ){
         write(comm_dev,"<",1);
+        time_move = curr_time + 100000;
+      }else if( diff < -allowance ){
+        write(comm_dev,">",1);
         time_move = curr_time + 100000;
       }else{
         write(comm_dev,"sf",2);
         time_move = curr_time + 500000;
       }
     }
-    printf("%f\n",(float)faceBox->center.x);
+    printf("%f\n",face_centre);
     //printf("%d\n", i);
   }
 }
