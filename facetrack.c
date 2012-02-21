@@ -18,6 +18,10 @@
 #include <stdio.h>
 #include "haarCascade.h"
 #include "camshift.h"
+#include <sys/types.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <sys/time.h>
 
 IplImage  * frameCopy = 0;
 
@@ -27,9 +31,11 @@ void camShifterLoop();
 void haarCascadeLoop();
 
 int loops = 50;
-CvRect * faceRect = 0;
-CvCapture * capture;
+struct timeval now_time;
 camshift cs;
+CvRect * faceRect;
+CvCapture * capture;
+CvBox2D * faceBox;
 
 int main( int argc, char** argv )
 {
@@ -44,20 +50,22 @@ int main( int argc, char** argv )
 
   setVmin(&cs, 60);
   setSmin(&cs, 50);
+  int gun_port = open("/dev/pts/14",O_WRONLY,O_ASYNC);
 
   while(1) {
     haarCascadeLoop();
     initTracking(&cs, frameCopy, faceRect);
-    camShifterLoop();
+    camShifterLoop(gun_port);
   }
-
+  close(gun_port);
   cleanup(&cs, 0);
 }
 
 int camShifter() {
   CvBox2D fb;
-  CvBox2D * faceBox = &fb;
+  faceBox = &fb;
   nextFrame();
+
 
   if(!track(&cs, frameCopy, faceBox)) return 0;
 
@@ -68,17 +76,39 @@ int camShifter() {
 }
 
 
-void camShifterLoop() {
+void camShifterLoop(int comm_dev) {
   int i;
-  for (i = 0; i < loops; i++)
+  suseconds_t time_move = now_time.tv_sec*100000 + now_time.tv_usec;
+
+  //for (i = 0; i < loops; i++)
+  for(;;)
   {
+    gettimeofday(&now_time,NULL);
+    unsigned long int curr_time = now_time.tv_sec*100000 + now_time.tv_usec;
     if (!camShifter()) break;
     char key = cvWaitKey(10);
     if( (char)27==key ) break;
     if( (char)43==key ) loops += 10;
     if( (char)45==key ) loops -= 10;
 
-    printf("%d\n", i);
+    int face_centre = faceBox->center.x;
+    int window_centre = 300;
+    int diff = face_centre - window_centre;
+    int allowance = 100;
+    if( time_move < curr_time ){
+      if( diff > allowance ){
+        write(comm_dev,">",1);
+        time_move = curr_time + 100000;
+      }else if( diff < allowance ){
+        write(comm_dev,"<",1);
+        time_move = curr_time + 100000;
+      }else{
+        write(comm_dev,"sf",2);
+        time_move = curr_time + 500000;
+      }
+    }
+    printf("%f\n",(float)faceBox->center.x);
+    //printf("%d\n", i);
   }
 }
 
