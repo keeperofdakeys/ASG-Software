@@ -37,12 +37,17 @@ CvRect * faceRect;
 CvCapture * capture;
 double face_centre_x;
 double face_centre_y;
+int width = 320;
+int height = 240;
 
 int main( int argc, char** argv )
 {
   capture = cvCaptureFromCAM(1);
+  cvSetCaptureProperty(capture, CV_CAP_PROP_FRAME_WIDTH,width);
+  cvSetCaptureProperty(capture, CV_CAP_PROP_FRAME_HEIGHT,height);
 
   initHaarCascade("/usr/share/opencv/haarcascades/haarcascade_frontalface_default.xml");
+  //initHaarCascade("/usr/share/opencv/haarcascades/haarcascade_frontalface_alt2.xml");
 
   cvNamedWindow( "video", 1 );
 
@@ -81,13 +86,13 @@ int camShifter() {
 
 void camShifterLoop(int comm_dev) {
   int i;
-  unsigned long int curr_time = now_time.tv_sec*100000 + now_time.tv_usec;
+  suseconds_t curr_time = now_time.tv_sec*1000000 + now_time.tv_usec;
   suseconds_t last_move = curr_time;
   suseconds_t last_fire = curr_time;
   suseconds_t last_ready_fire = curr_time;
-  int move_sleep = 75 * 1000; // micro seconds
-  int fire_sleep = 500 * 1000;
-  int ready_fire_sleep = 200 * 1000;
+  int move_sleep = 300 * 1000; // micro seconds
+  int fire_sleep = 2000 * 1000;
+  int ready_fire_sleep = 1000 * 1000;
   int ready_fire = 0;
   double last_x = 0;
   double last_y = 0;
@@ -95,33 +100,33 @@ void camShifterLoop(int comm_dev) {
   //for (i = 0; i < loops; i++)
   for(;;)
   {
-    curr_time = now_time.tv_sec*100000 + now_time.tv_usec;
+    curr_time = now_time.tv_sec*1000000 + now_time.tv_usec;
     gettimeofday(&now_time,NULL);
     if (!camShifter()) break;
     char key = cvWaitKey(10);
 
-    int window_centre = 320;
+    int window_centre = width/2;
     double diff = face_centre_x - window_centre;
-    double allowance = 30.0;
-    if( last_move < curr_time && !ready_fire ){
-      if( diff > allowance ){
-        write(comm_dev,">>",2);
-        last_move = curr_time + move_sleep;
-      }else if( diff < -allowance ){
-        write(comm_dev,"<<",2);
-        last_move = curr_time + move_sleep;
-      }else if( last_fire < curr_time ){
-        write(comm_dev,"s",1);
-        last_move = curr_time + move_sleep;
-        last_ready_fire = curr_time + ready_fire_sleep;
-        last_fire = curr_time + fire_sleep;
-        last_x = face_centre_x;
-        last_y = face_centre_y;
-        ready_fire = 1;
-      }
-    }else if( ready_fire && last_ready_fire < curr_time ){
+    double allowance = 20.0;
+    if( diff > allowance && last_move < curr_time ){
+      write(comm_dev,">>",2);
+      last_move = curr_time + move_sleep;
+      ready_fire = 0;
+    }else if( diff < -allowance && last_move < curr_time ){
+      write(comm_dev,"<<",2);
+      last_move = curr_time + move_sleep;
+      ready_fire = 0;
+    }else if( last_move < curr_time && !ready_fire ){
+      write(comm_dev,"s",1);
+      last_move = curr_time + move_sleep;
+      last_ready_fire = curr_time + ready_fire_sleep;
+      last_x = face_centre_x;
+      last_y = face_centre_y;
+      ready_fire = 1;
+    }else if( ready_fire && last_ready_fire < curr_time && last_fire < curr_time ){
       if( (int) last_x != (int) face_centre_x || (int) last_y != (int) face_centre_y ){
         write(comm_dev,"f",1);
+        last_fire = curr_time + fire_sleep;
         break;
       }
       ready_fire = 0;
