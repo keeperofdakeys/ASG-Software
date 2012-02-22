@@ -14,7 +14,7 @@
 */
 
 #include <opencv2/core/core_c.h>
-#include <opencv/highgui.h>
+#include <opencv2/highgui/highgui_c.h>
 #include <stdio.h>
 #include "haarCascade.h"
 #include "camshift.h"
