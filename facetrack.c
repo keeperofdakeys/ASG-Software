@@ -35,11 +35,12 @@ struct timeval now_time;
 camshift cs;
 CvRect * faceRect;
 CvCapture * capture;
-double face_centre;
+double face_centre_x;
+double face_centre_y;
 
 int main( int argc, char** argv )
 {
-  capture = cvCaptureFromCAM(-1);
+  capture = cvCaptureFromCAM(1);
 
   initHaarCascade("/usr/share/opencv/haarcascades/haarcascade_frontalface_default.xml");
 
@@ -50,7 +51,7 @@ int main( int argc, char** argv )
 
   setVmin(&cs, 60);
   setSmin(&cs, 50);
-  int gun_port = open("/dev/pts/14",O_WRONLY,O_ASYNC);
+  int gun_port = open("/dev/ttyACM0",O_WRONLY,O_ASYNC);
 
   while(1) {
     haarCascadeLoop();
@@ -68,7 +69,8 @@ int camShifter() {
 
   if(!track(&cs, frameCopy, faceBox)) return 0;
   
-  face_centre = faceBox->center.x;
+  face_centre_x = faceBox->center.x;
+  face_centre_y = faceBox->center.y;
 
   cvEllipseBox(frameCopy, *faceBox,
       CV_RGB(255,0,0), 3, CV_AA, 0 );
@@ -79,35 +81,51 @@ int camShifter() {
 
 void camShifterLoop(int comm_dev) {
   int i;
-  suseconds_t time_move = now_time.tv_sec*100000 + now_time.tv_usec;
+  unsigned long int curr_time = now_time.tv_sec*100000 + now_time.tv_usec;
+  suseconds_t last_move = curr_time;
+  suseconds_t last_fire = curr_time;
+  suseconds_t last_ready_fire = curr_time;
+  int move_sleep = 75 * 1000; // micro seconds
+  int fire_sleep = 500 * 1000;
+  int ready_fire_sleep = 200 * 1000;
+  int ready_fire = 0;
+  double last_x = 0;
+  double last_y = 0;
 
   //for (i = 0; i < loops; i++)
   for(;;)
   {
+    curr_time = now_time.tv_sec*100000 + now_time.tv_usec;
     gettimeofday(&now_time,NULL);
-    unsigned long int curr_time = now_time.tv_sec*100000 + now_time.tv_usec;
     if (!camShifter()) break;
     char key = cvWaitKey(10);
-    if( (char)27==key ) break;
-    if( (char)43==key ) loops += 10;
-    if( (char)45==key ) loops -= 10;
 
     int window_centre = 320;
-    double diff = face_centre - window_centre;
+    double diff = face_centre_x - window_centre;
     double allowance = 30.0;
-    if( time_move < curr_time ){
+    if( last_move < curr_time && !ready_fire ){
       if( diff > allowance ){
-        write(comm_dev,"<",1);
-        time_move = curr_time + 100000;
+        write(comm_dev,">>",2);
+        last_move = curr_time + move_sleep;
       }else if( diff < -allowance ){
-        write(comm_dev,">",1);
-        time_move = curr_time + 100000;
-      }else{
-        write(comm_dev,"sf",2);
-        time_move = curr_time + 500000;
+        write(comm_dev,"<<",2);
+        last_move = curr_time + move_sleep;
+      }else if( last_fire < curr_time ){
+        write(comm_dev,"s",1);
+        last_move = curr_time + move_sleep;
+        last_ready_fire = curr_time + ready_fire_sleep;
+        last_fire = curr_time + fire_sleep;
+        last_x = face_centre_x;
+        last_y = face_centre_y;
+        ready_fire = 1;
       }
+    }else if( ready_fire && last_ready_fire < curr_time ){
+      if( (int) last_x != (int) face_centre_x || (int) last_y != (int) face_centre_y ){
+        write(comm_dev,"f",1);
+        break;
+      }
+      ready_fire = 0;
     }
-    printf("%f\n",face_centre);
     //printf("%d\n", i);
   }
 }
