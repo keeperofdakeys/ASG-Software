@@ -39,15 +39,18 @@ double face_centre_x;
 double face_centre_y;
 int width = 320;
 int height = 240;
+char * device = "/dev/ttyACM0";
+char * object_specification = "/usr/share/opencv/haarcascades/haarcascade_frontalface_default.xml";
+int cam_index = 1;
 
 int main( int argc, char** argv )
 {
-  capture = cvCaptureFromCAM(1);
+  capture = cvCaptureFromCAM(cam_index);
   cvSetCaptureProperty(capture, CV_CAP_PROP_FRAME_WIDTH,width);
   cvSetCaptureProperty(capture, CV_CAP_PROP_FRAME_HEIGHT,height);
 
-  initHaarCascade("/usr/share/opencv/haarcascades/haarcascade_frontalface_default.xml");
-  //initHaarCascade("/usr/share/opencv/haarcascades/haarcascade_frontalface_alt2.xml");
+  //initHaarCascade("/usr/share/opencv/haarcascades/haarcascade_frontalface_default.xml");
+  initHaarCascade(object_specification);
 
   cvNamedWindow( "video", 1 );
 
@@ -56,7 +59,7 @@ int main( int argc, char** argv )
 
   setVmin(&cs, 60);
   setSmin(&cs, 50);
-  int gun_port = open("/dev/ttyACM0",O_WRONLY,O_ASYNC);
+  int gun_port = open(device,O_WRONLY,O_ASYNC);
 
   while(1) {
     haarCascadeLoop();
@@ -91,8 +94,8 @@ void camShifterLoop(int comm_dev) {
   suseconds_t last_fire = curr_time;
   suseconds_t last_ready_fire = curr_time;
   int move_sleep = 300 * 1000; // micro seconds
-  int fire_sleep = 2000 * 1000;
-  int ready_fire_sleep = 1000 * 1000;
+  int fire_sleep = 1000 * 1000;
+  int ready_fire_sleep = 500 * 1000;
   int ready_fire = 0;
   double last_x = 0;
   double last_y = 0;
