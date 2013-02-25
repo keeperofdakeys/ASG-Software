@@ -14,9 +14,8 @@
     along with FaceTrack.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <opencv2/core/core_c.h>
+#include <opencv/cv.h>
 #include <stdio.h>
-#include <opencv2/objdetect/objdetect.hpp>
 #include "haarCascade.h"
 
 
@@ -26,39 +25,39 @@ CvSeq * faceRectSeq;
 
 void initHaarCascade(const char * haarCascadePath)
 {
-  storage = cvCreateMemStorage(0);
+        storage = cvCreateMemStorage(0);
 
-  cascade = (CvHaarClassifierCascade *)cvLoad( haarCascadePath, 0, 0, 0 );
-  if( !cascade )
-  {
-    fprintf(stderr, "XML Classifier not found\n");
-    exit(-1);
-  }
+        cascade = (CvHaarClassifierCascade *)cvLoad( haarCascadePath, 0, 0, 0 );
+        if( !cascade )
+        {
+                fprintf(stderr, "XML Classifier not found\n");
+                exit(-1);
+        }
 }
 
 
 void closeHaarCascade()
 {
-  if(cascade) cvReleaseHaarClassifierCascade(&cascade);
-  if(storage) cvReleaseMemStorage(&storage);
+        if(cascade) cvReleaseHaarClassifierCascade(&cascade);
+        if(storage) cvReleaseMemStorage(&storage);
 }
 
 CvRect * haarDetectFace(IplImage * img)
 {
-  CvRect* rect = 0;
+        CvRect* rect = 0;
 
-  //  int minFaceSize = img->width / 5;
-  int minFaceSize = 30;
-  faceRectSeq = cvHaarDetectObjects
-    (img, cascade, storage,
-     1.1,
-     6,
-     CV_HAAR_DO_CANNY_PRUNING, // other options here, should explore
-     cvSize(minFaceSize,minFaceSize), cvSize(minFaceSize,minFaceSize));
+        int minFaceSize = img->width / 10; // change these depending on size of face in the frame
+        int maxFaceSize = img->width / 3;
+        faceRectSeq = cvHaarDetectObjects
+                (img, cascade, storage,
+                 1.1,
+                 6,
+                 CV_HAAR_DO_CANNY_PRUNING, // other options here, should explore
+                 cvSize(minFaceSize, minFaceSize), cvSize(maxFaceSize, maxFaceSize));
 
-  if( faceRectSeq && faceRectSeq->total )
-    rect = (CvRect*)cvGetSeqElem(faceRectSeq, 0);
+        if( faceRectSeq && faceRectSeq->total )
+                rect = (CvRect*)cvGetSeqElem(faceRectSeq, 0);
 
-  return rect;
+        return rect;
 }
 

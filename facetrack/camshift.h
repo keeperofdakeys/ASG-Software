@@ -14,19 +14,19 @@
     along with FaceTrack.  If not, see <http://www.gnu.org/licenses/>.
 */
 struct camshiftStruct {
-  int   nHistBins;
-  float rangesArr[2];
-  int vmin;
-  int vmax;
-  int smin;
-  IplImage * HSVImg;
-  IplImage * hueImg;
-  IplImage * mask;
-  IplImage * probImg;
-  CvHistogram * hist;
-  CvRect prevFaceRect;
-  CvBox2D faceBox;
-  int nFrames;
+        int   nHistBins;
+        float rangesArr[2];
+        int vmin;
+        int vmax;
+        int smin;
+        IplImage * HSVImg;
+        IplImage * hueImg;
+        IplImage * mask;
+        IplImage * probImg;
+        CvHistogram * hist;
+        CvRect prevFaceRect;
+        CvBox2D faceBox;
+        int nFrames;
 };
 typedef struct camshiftStruct camshift;
 
