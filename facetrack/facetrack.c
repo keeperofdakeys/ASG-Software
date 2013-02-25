@@ -41,7 +41,7 @@ int width = 320;
 int height = 240;
 char * device = "/dev/ttyACM0";
 char * object_specification = "/usr/share/opencv/haarcascades/haarcascade_frontalface_default.xml";
-int cam_index = 1;
+int cam_index = 0;
 
 int main( int argc, char** argv )
 {
